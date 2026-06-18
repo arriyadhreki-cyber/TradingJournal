@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Journal — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Full-page loading shown while checking auth session -->
+<div class="app-loading" id="appLoading">
+  <div class="spinner"></div>
+  <div class="app-loading-text">MEMUAT JOURNAL...</div>
+</div>
+
+<!-- Animated Background -->
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+
+<div class="app" id="appRoot" style="display:none;">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon-sm">📈</div>
+      <div>
+        <div class="logo-text" style="font-size:14px;">FX JOURNAL</div>
+        <div class="logo-sub">TRADING DIARY</div>
+      </div>
+    </div>
+
+    <div class="nav-label">Main</div>
+    <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+      <span class="nav-icon">⚡</span> Dashboard
+    </div>
+    <div class="nav-item" data-page="journal" onclick="showPage('journal')">
+      <span class="nav-icon">📋</span> Trade Journal
+    </div>
+    <div class="nav-item" data-page="statistics" onclick="showPage('statistics')">
+      <span class="nav-icon">📊</span> Statistics
+    </div>
+
+    <div class="nav-label" style="margin-top:20px;">Account</div>
+    <div class="nav-item" onclick="openModal()">
+      <span class="nav-icon">➕</span> Add Trade
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="account-pill">
+        <div class="avatar" id="userAvatar">👤</div>
+        <div style="overflow:hidden;">
+          <div class="acc-name" id="userName">Loading...</div>
+          <div class="acc-sub" id="userEmail">—</div>
+        </div>
+        <button class="logout-btn" onclick="logout()" title="Keluar">⏻</button>
+      </div>
+    </div>
+  </aside>
+  <div class="overlay-dim" id="dimOverlay" onclick="closeSidebar()"></div>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <div>
+          <div class="page-title" id="pageTitle">Dashboard</div>
+          <div class="page-sub" id="pageSubtitle">Selamat datang! Pantau performa trading Anda.</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-ghost" onclick="exportCSV()">⬇ Export</button>
+        <button class="btn-primary" onclick="openModal()">➕ Add Trade</button>
+      </div>
+    </div>
+
+    <!-- ===== DASHBOARD PAGE ===== -->
+    <div id="page-dashboard">
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="card stat-card">
+          <div class="stat-label">Total P&L</div>
+          <div class="stat-value" id="stat-pnl">$0.00</div>
+          <div class="stat-badge badge-neutral" id="stat-pnl-badge">— 0 Trades</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-value" id="stat-wr">0%</div>
+          <div class="stat-badge badge-neutral" id="stat-wr-badge">— W:0 L:0</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Profit Factor</div>
+          <div class="stat-value" id="stat-pf">0.00</div>
+          <div class="stat-badge badge-neutral" id="stat-pf-badge">— Gross Ratio</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Max Drawdown</div>
+          <div class="stat-value" id="stat-dd">$0.00</div>
+          <div class="stat-badge badge-neutral" id="stat-dd-badge">— Peak to Trough</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-row">
+        <div class="card">
+          <div class="chart-title">Equity Curve</div>
+          <div class="chart-sub">Kumulatif P&L per trade</div>
+          <canvas id="equityChart" height="200"></canvas>
+        </div>
+        <div class="card">
+          <div class="chart-title">Pair Distribution</div>
+          <div class="chart-sub">Volume trade per pair</div>
+          <canvas id="pairChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-row" style="grid-template-columns:1fr 1fr;">
+        <div class="card">
+          <div class="chart-title">Monthly P&L</div>
+          <div class="chart-sub">Kinerja bulanan tahun ini</div>
+          <canvas id="monthlyChart" height="180"></canvas>
+        </div>
+        <div class="card">
+          <div class="chart-title">Trade Breakdown</div>
+          <div class="chart-sub">Win / Loss / BE ratio</div>
+          <div id="breakdown-visual" style="padding-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== JOURNAL PAGE ===== -->
+    <div id="page-journal" style="display:none;">
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="filterTable('all',this)">All</button>
+        <button class="filter-btn" onclick="filterTable('win',this)">✅ Win</button>
+        <button class="filter-btn" onclick="filterTable('loss',this)">❌ Loss</button>
+        <button class="filter-btn" onclick="filterTable('buy',this)">↑ Buy</button>
+        <button class="filter-btn" onclick="filterTable('sell',this)">↓ Sell</button>
+        <div class="search-box">
+          🔍 <input type="text" id="searchInput" placeholder="Cari pair, catatan, setup..." oninput="filterTable('search',null)">
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-scroll">
+          <table id="tradeTable">
+            <thead>
+              <tr>
+                <th onclick="sortTable('trade_date')">Tanggal <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable('pair')">Pair <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable('type')">Type <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable('lot')">Lot <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable('entry_price')">Entry <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable('exit_price')">Exit <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable('pnl')">P&L <span class="sort-icon">↕</span></th>
+                <th onclick="sortTable('result')">Result <span class="sort-icon">↕</span></th>
+                <th>Setup</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tradeBody"></tbody>
+          </table>
+        </div>
+        <div id="empty-table" class="empty-state" style="display:none;">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">Belum ada trade</div>
+          <div class="empty-sub">Klik "+ Add Trade" untuk menambahkan trade pertama Anda.</div>
+        </div>
+        <div class="pagination" style="padding:14px 20px;">
+          <div id="paginationInfo">Menampilkan 0 dari 0 trade</div>
+          <div class="page-btns" id="pageBtns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STATISTICS PAGE ===== -->
+    <div id="page-statistics" style="display:none;">
+      <div class="stats-grid">
+        <div class="card stat-card">
+          <div class="stat-label">Avg Win</div>
+          <div class="stat-value profit-pos" id="s-avg-win">$0</div>
+          <div class="stat-sub">Per winning trade</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Avg Loss</div>
+          <div class="stat-value profit-neg" id="s-avg-loss">$0</div>
+          <div class="stat-sub">Per losing trade</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Best Trade</div>
+          <div class="stat-value profit-pos" id="s-best">$0</div>
+          <div class="stat-sub" id="s-best-pair">—</div>
+        </div>
+        <div class="card stat-card">
+          <div class="stat-label">Worst Trade</div>
+          <div class="stat-value profit-neg" id="s-worst">$0</div>
+          <div class="stat-sub" id="s-worst-pair">—</div>
+        </div>
+      </div>
+
+      <div class="chart-row" style="grid-template-columns:1fr 1fr;">
+        <div class="card">
+          <div class="chart-title">P&L per Pair</div>
+          <div class="chart-sub">Total profit/loss per currency pair</div>
+          <canvas id="pairPnlChart" height="220"></canvas>
+        </div>
+        <div class="card">
+          <div class="chart-title">Setup Performance</div>
+          <div class="chart-sub">Win rate per setup strategi</div>
+          <canvas id="setupChart" height="220"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="chart-title" style="margin-bottom:4px;">Day of Week Analysis</div>
+        <div class="chart-sub">Rata-rata P&L per hari dalam seminggu</div>
+        <canvas id="dowChart" height="150"></canvas>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== MODAL ADD/EDIT TRADE ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">➕ Add New Trade</div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- ====== SECTION 1: INFO DASAR ====== -->
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>Tanggal & Waktu *</label>
+        <input type="datetime-local" id="f-date">
+        <div class="field-error">Tanggal wajib diisi</div>
+      </div>
+
+      <div class="form-group">
+        <label>Currency Pair *</label>
+        <select id="f-pair" onchange="toggleCustomPair()">
+          <option value="">-- Pilih Pair --</option>
+          <optgroup label="Major Pairs">
+            <option>EUR/USD</option><option>GBP/USD</option><option>USD/JPY</option>
+            <option>AUD/USD</option><option>USD/CHF</option><option>NZD/USD</option><option>USD/CAD</option>
+          </optgroup>
+          <optgroup label="Minor Pairs">
+            <option>EUR/GBP</option><option>EUR/JPY</option><option>GBP/JPY</option>
+            <option>AUD/JPY</option><option>EUR/AUD</option><option>GBP/AUD</option>
+          </optgroup>
+          <optgroup label="Metals">
+            <option>XAU/USD</option><option>XAG/USD</option>
+          </optgroup>
+          <option value="custom">Custom...</option>
+        </select>
+        <div class="field-error">Pilih currency pair</div>
+      </div>
+
+      <div class="form-group" id="customPairGroup" style="display:none;">
+        <label>Custom Pair</label>
+        <input type="text" id="f-pair-custom" placeholder="e.g. BTC/USD">
+      </div>
+
+      <div class="form-group" id="typeGroup">
+        <label>Type *</label>
+        <select id="f-type">
+          <option value="buy">📈 Buy (Long)</option>
+          <option value="sell">📉 Sell (Short)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Lot Size</label>
+        <input type="number" id="f-lot" placeholder="0.01" step="0.01" min="0.01">
+      </div>
+    </div>
+
+    <!-- ====== SECTION 2: HARGA ====== -->
+    <div style="margin:22px 0 14px;border-top:1px solid var(--glass-border);padding-top:18px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:14px;">💰 Harga & Risk Management</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Entry Price</label>
+          <input type="number" id="f-entry" placeholder="1.08500" step="0.00001">
+        </div>
+        <div class="form-group">
+          <label>Exit Price</label>
+          <input type="number" id="f-exit" placeholder="1.09000" step="0.00001">
+        </div>
+        <div class="form-group">
+          <label>Stop Loss</label>
+          <input type="number" id="f-sl" placeholder="1.08200" step="0.00001">
+        </div>
+        <div class="form-group">
+          <label>Take Profit</label>
+          <input type="number" id="f-tp" placeholder="1.09200" step="0.00001">
+        </div>
+        <div class="form-group">
+          <label>Risk : Reward <span class="opt">(otomatis)</span></label>
+          <input type="text" id="f-rr" placeholder="Isi Entry, SL & TP" readonly>
+          <div class="field-hint">Dihitung otomatis dari Entry, SL, dan TP</div>
+        </div>
+        <div class="form-group">
+          <label>P&L ($) *</label>
+          <input type="number" id="f-pnl" placeholder="+125.50" step="0.01">
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== SECTION 3: HASIL & ANALISA ====== -->
+    <div style="margin:22px 0 14px;border-top:1px solid var(--glass-border);padding-top:18px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:14px;">📊 Hasil & Analisa</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Result *</label>
+          <select id="f-result">
+            <option value="win">✅ Win</option>
+            <option value="loss">❌ Loss</option>
+            <option value="be">⚖️ Break Even</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Setup / Strategy</label>
+          <select id="f-setup">
+            <option value="">-- Pilih Setup --</option>
+            <option>Order Block</option><option>Fair Value Gap</option><option>Breakout</option>
+            <option>Trend Follow</option><option>RSI Divergence</option><option>Moving Average Cross</option>
+            <option>Support & Resistance</option><option>Fibonacci</option><option>Price Action</option>
+            <option>News Trade</option><option>Scalping</option><option>Custom</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Catatan / Notes</label>
+          <textarea id="f-notes" placeholder="Tambahkan catatan analisa, kondisi market, emosi saat trading, dll..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeModal()">Batal</button>
+      <button class="btn-save" id="saveBtn" onclick="saveTrade()">💾 Simpan Trade</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
